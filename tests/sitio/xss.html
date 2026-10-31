@@ -1,0 +1,14 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>"><script>alert('título')</script></title>
+<meta name="description" content="'&quot;><script>alert('descripción')</script><img src=x onerror=alert(1)>">
+<link rel="canonical" href="/xss.html">
+</head>
+<body>
+<h1>&lt;script&gt;alert('h1')&lt;/script&gt;</h1>
+<img src='/img/x" onerror="alert(2)'>
+<a href='/"><script>alert(3)</script>'>enlace hostil</a>
+</body>
+</html>

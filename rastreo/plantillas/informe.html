@@ -1,0 +1,144 @@
+{%- macro enlace(url) -%}
+<a class="url" href="{{ url }}" rel="noopener noreferrer nofollow">{{ url }}</a>
+{%- endmacro -%}
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+{# Todo lo que viene de la web rastreada es entrada no fiable: autoescape activo y CSP sin scripts. #}
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'sha256-{{ huella_css }}'; img-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<meta name="generator" content="rastreo {{ version }}">
+<title>Informe SEO de {{ r.host }} · rastreo</title>
+<style>{{ css | safe }}</style>
+</head>
+<body>
+<div class="envoltorio">
+<header>
+  <p class="marca" aria-label="rastreo"><span class="prompt">$</span> rastreo<span class="cursor" aria-hidden="true"></span></p>
+  <p class="antetitulo">Informe de SEO técnico</p>
+  <h1>{{ r.host }}</h1>
+  <p class="sitio mono"><a href="{{ r.inicio }}" rel="noopener noreferrer nofollow">{{ r.inicio }}</a></p>
+  <dl class="meta">
+    <div><dt>Fecha</dt><dd><time datetime="{{ a.fecha.isoformat(timespec='minutes') }}">{{ a.fecha.strftime('%d/%m/%Y %H:%M') }}</time></dd></div>
+    <div><dt>Duración</dt><dd>{{ r.duracion | decimal }} s</dd></div>
+    <div><dt>URL rastreadas</dt><dd>{{ r.respuestas | length | miles }}</dd></div>
+    <div><dt>Páginas analizadas</dt><dd>{{ a.paginas_analizadas | miles }}</dd></div>
+    <div><dt>Bloqueadas por robots.txt</dt><dd>{{ r.bloqueadas | length | miles }}</dd></div>
+  </dl>
+</header>
+
+<main>
+<section class="resumen" aria-label="Resumen">
+  <div class="tarjeta puntuacion">
+    <p class="etiqueta">Puntuación general</p>
+    {% if a.puntuacion is none %}
+    <p class="cifra">—</p>
+    <p class="valoracion">Sin datos <span class="atenuado">· no se ha podido analizar ninguna página</span></p>
+    {% else %}
+    <p class="cifra">{{ a.puntuacion }}<small>/100</small></p>
+    <div class="barra barra-total" role="img" aria-label="{{ a.puntuacion }} de 100"><span></span></div>
+    <p class="valoracion">{{ valoracion }} <span class="atenuado">· {{ a.problemas | length }} {{ 'tipo de problema detectado' if a.problemas | length == 1 else 'tipos de problema detectados' }}</span></p>
+    {% endif %}
+  </div>
+  <ul class="cifras">
+    <li class="c-error"><strong>{{ a.contar('error') | miles }}</strong><span>URL con errores</span></li>
+    <li class="c-aviso"><strong>{{ a.contar('aviso') | miles }}</strong><span>URL con avisos</span></li>
+    <li class="c-info"><strong>{{ a.contar('info') | miles }}</strong><span>URL con mejoras informativas</span></li>
+    <li><strong>{{ a.superadas | length }}</strong><span>Comprobaciones superadas</span></li>
+  </ul>
+</section>
+
+{% set marcas = {'error': '✗', 'aviso': '!', 'info': 'i'} %}
+{% set nombres = {'error': 'Error', 'aviso': 'Aviso', 'info': 'Info'} %}
+{% if a.problemas %}
+<section aria-labelledby="t-prioridades">
+  <h2 id="t-prioridades">Por dónde empezar</h2>
+  <p class="intro">Problemas ordenados por lo que restan a la puntuación. Arreglar los primeros es lo que más se nota.</p>
+  <ol class="prioridades">
+    {% for p in a.problemas %}
+    <li id="prio-{{ p.tipo.id }}">
+      <span class="marca-gravedad g-{{ p.tipo.gravedad }}" aria-label="{{ nombres[p.tipo.gravedad] }}">{{ marcas[p.tipo.gravedad] }}</span>
+      <a href="#{{ p.tipo.id }}">{{ p.tipo.titulo }}</a>
+      <span class="cuenta">{{ p.total | miles }} <span class="atenuado">{{ p.tipo.unidad }}</span></span>
+      <span class="impacto"><span class="barra" aria-hidden="true"><span></span></span>{% if p.impacto %}−{{ p.impacto | decimal }} pts{% else %}sin penalización{% endif %}</span>
+    </li>
+    {% endfor %}
+  </ol>
+</section>
+
+<section aria-labelledby="t-detalle">
+  <h2 id="t-detalle">Detalle de cada problema</h2>
+  <p class="intro">Cada apartado explica por qué importa, cómo arreglarlo y la lista exacta de URL afectadas.</p>
+  {% for p in a.problemas %}
+  <article class="problema" id="{{ p.tipo.id }}" aria-labelledby="h-{{ p.tipo.id }}">
+    <span class="insignia g-{{ p.tipo.gravedad }}">{{ nombres[p.tipo.gravedad] }}</span>
+    <h3 id="h-{{ p.tipo.id }}">{{ p.tipo.titulo }}</h3>
+    <p class="datos mono">{{ p.total | miles }} {{ p.tipo.unidad }}{% if p.tipo.unidad != 'URL' %} en {{ p.urls | miles }} URL{% endif %} · {% if p.impacto %}resta {{ p.impacto | decimal }} puntos{% else %}no resta puntos{% endif %}</p>
+    <p>{{ p.tipo.porque }}</p>
+    <p class="como"><strong>Cómo arreglarlo:</strong> {{ p.tipo.como }}</p>
+    <details{% if loop.first and p.hallazgos | length <= 20 %} open{% endif %}>
+      <summary>Ver {{ 'la URL' if p.urls == 1 else 'las ' ~ (p.urls | miles) ~ ' URL' }}</summary>
+      <ul class="urls">
+      {% if p.tipo.agrupar %}
+        {% for detalle, grupo in p.grupos() %}
+        <li>
+          <p class="grupo-titulo">«{{ detalle }}» <span class="atenuado mono">· {{ grupo | length }} páginas</span></p>
+          <ul class="lista-simple">
+            {% for h in grupo %}<li>{{ enlace(h.url) }}</li>{% endfor %}
+          </ul>
+        </li>
+        {% endfor %}
+      {% else %}
+        {% for h in p.hallazgos %}
+        <li>
+          {{ enlace(h.url) }}
+          {% if h.detalle %}<span class="detalle">{{ h.detalle }}</span>{% endif %}
+          {% if h.relacionadas %}
+          <ul class="relacionadas">
+            <li class="etiqueta">{{ h.etiqueta_relacionadas }}:</li>
+            {% for rel in h.relacionadas[:max_relacionadas] %}<li>{% if rel is url %}{{ enlace(rel) }}{% else %}<span class="url">{{ rel }}</span>{% endif %}</li>{% endfor %}
+            {% if h.relacionadas | length > max_relacionadas %}<li class="atenuado">y {{ (h.relacionadas | length - max_relacionadas) | miles }} más (lista completa con --json)</li>{% endif %}
+          </ul>
+          {% endif %}
+        </li>
+        {% endfor %}
+      {% endif %}
+      </ul>
+    </details>
+  </article>
+  {% endfor %}
+</section>
+{% endif %}
+
+{% if a.superadas %}
+<section aria-labelledby="t-superadas">
+  <h2 id="t-superadas">Comprobaciones superadas</h2>
+  <ul class="superadas">
+    {% for s in a.superadas %}<li><span class="marca-gravedad g-ok" aria-hidden="true">✓</span>{{ s }}</li>{% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section aria-labelledby="t-notas">
+  <h2 id="t-notas">Notas del rastreo</h2>
+  <ul class="lista-simple atenuado">
+    <li>Se han seguido solo los enlaces de {{ r.host }} respetando su robots.txt.</li>
+    {% if r.limite_alcanzado %}<li>Se alcanzó el límite de páginas: hay URL sin rastrear. Sube <code>--max-paginas</code> para cubrir la web entera.</li>{% endif %}
+    {% if r.externos %}<li>Se han comprobado {{ r.externos | length | miles }} enlaces externos.</li>
+    {% elif r.enlaces_externos %}<li>Hay {{ r.enlaces_externos | length | miles }} enlaces externos sin comprobar (usa <code>--externos</code>).</li>{% endif %}
+    {% for aviso in r.avisos %}<li>{{ aviso }}</li>{% endfor %}
+  </ul>
+</section>
+</main>
+
+<footer>
+  <p>Generado con <span class="mono">rastreo {{ version }}</span> el {{ a.fecha | fecha_larga }}.</p>
+  <p>Hecho por <a href="{{ url_autor }}" rel="noopener noreferrer">{{ autor }}</a>.</p>
+</footer>
+</div>
+</body>
+</html>

@@ -1,0 +1,23 @@
+# Entorno de Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+
+# Informes generados (pueden contener URL internas de clientes)
+/informe*.html
+/auditorias/
+/*.json
+
+# Variables de entorno y datos locales
+.env
+.env.*
+
+# Sistema y editores
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
